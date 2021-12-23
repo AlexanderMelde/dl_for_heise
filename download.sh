@@ -10,7 +10,7 @@ max_tries_per_download=3 # if a download fails (or is not a valid pdf), repeat t
 
 max_nr_of_magazines_per_year=27
 
-echo 'Heise Magazine Downloader v1.1'
+echo 'Heise Magazine Downloader v1.2'
 
 usage()
 {  
@@ -70,7 +70,7 @@ for year in $(seq -f %g ${start_year} ${end_year}); do
             curl ${silent_param} -b ${curl_session_file} -f -k -L --retry 99 "https://heise.cloudimg.io/v7/_www-heise-de_/select/thumbnail/${magazine}/${year}/${i}.jpg" -o "${file_base_path}.jpg" --create-dirs
             if [ $? -eq 22 ]; then
                 # If the thumbnail could not be downloaded, the requested issue most likely does not exist
-                echo "${logp}[\033[0;33mSKIP\033[0m] Magazine issue does not exist on the server, skipping."
+                printf "${logp}[\033[0;33mSKIP\033[0m] Magazine issue does not exist on the server, skipping.\n"
             else
                 $verbose && printf "${log}${info} Thumbnail downloaded\n" 
                 # Try downloading the requested issue until a PDF of minimum size is downloaded or until the maximum amount of tries has been reached
@@ -96,7 +96,7 @@ for year in $(seq -f %g ${start_year} ${end_year}); do
                             echo "${logp}${try} Downloaded file is too small (size: ${actual_pdf_size}/${minimum_pdf_size})."
                             sleep ${wait_between_downloads}
                         else
-                            echo "${logp}[\033[0;32mSUCCESS\033[0m] Downloaded ${file_base_path}.pdf (size: ${actual_pdf_size})"
+                            printf "${logp}[\033[0;32mSUCCESS\033[0m] Downloaded ${file_base_path}.pdf (size: ${actual_pdf_size})\n"
                         fi
                     else
                         # If the header says it is not a pdf, we will try again.
@@ -115,7 +115,7 @@ for year in $(seq -f %g ${start_year} ${end_year}); do
                 fi
             fi
         else
-            echo "${logp}[\033[0;33mSKIP\033[0m] Already downloaded."
+            printf "${logp}[\033[0;33mSKIP\033[0m] Already downloaded.\n"
             count_skip=$((count_skip+1))
         fi
     done
