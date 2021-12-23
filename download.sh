@@ -5,10 +5,10 @@ email='name@example.com'
 password='nutella123'
 
 minimum_pdf_size=5000000 # minimum file size to check if downloaded file is a valid pdf
-wait_between_downloads=3 # wait a few seconds between repetitions on errors to prevent rate limiting
+wait_between_downloads=80 # wait a few seconds between repetitions on errors to prevent rate limiting
 max_tries_per_download=3 # if a download fails (or is not a valid pdf), repeat this often
 
-max_nr_of_magazines_per_year=27
+max_nr_of_magazines_per_year=13 # number of issues per year, e.g. ct=27, ix=13 (due to special editions)
 
 echo 'Heise Magazine Downloader v1.2'
 
@@ -43,6 +43,22 @@ magazine=${1}
 start_year=${2}
 [ "$3" = "" ] && end_year=${start_year} || end_year=${3}
 
+
+# Define function to sleep with progessbar
+sleepbar()
+{
+    count=0
+    total=$1
+    pstr="[=============================================================]"
+
+    while [ $count -lt $total ]; do
+        sleep 1
+        count=$(( $count + 1 ))
+        pd=$(( $count * ${#pstr} / $total ))
+        printf "\rWaiting for retry... ${count}/${total}s - %3d.%1d%% %.${pd}s" $(( $count * 100 / $total )) $(( ($count * 1000 / $total) % 10 )) $pstr
+    done
+    printf "\33[2K\r"
+}
 
 # Login
 echo "Logging in..."
@@ -84,7 +100,7 @@ for year in $(seq -f %g ${start_year} ${end_year}); do
                     if [ ${response_code} -eq 22 ]; then
                         # If the header could not be loaded, you most likely have no permission to request this file
                         echo "${logp}${try} Server refused connection, you might not be allowed to download this issue."
-                        sleep ${wait_between_downloads}
+                        sleepbar ${wait_between_downloads}
                     elif [ "${content_type}" = 'binary/octet-stream' ]; then
                         # If the header states this is a pdf file, download it
                         echo "${logp} Downloading..."
@@ -94,14 +110,14 @@ for year in $(seq -f %g ${start_year} ${end_year}); do
                             # If the file size of the downloaded pdf is not reasonably big (too small), we will retry.
                             # This is to prevent the saving of error pages, but should already be avoided using the content type check.
                             echo "${logp}${try} Downloaded file is too small (size: ${actual_pdf_size}/${minimum_pdf_size})."
-                            sleep ${wait_between_downloads}
+                            sleepbar ${wait_between_downloads}
                         else
                             printf "${logp}[\033[0;32mSUCCESS\033[0m] Downloaded ${file_base_path}.pdf (size: ${actual_pdf_size})\n"
                         fi
                     else
                         # If the header says it is not a pdf, we will try again.
                         echo "${logp}${try} Server did not serve a valid pdf (instead ${content_type})."
-                        sleep ${wait_between_downloads}
+                        sleepbar ${wait_between_downloads}
                     fi
                     downloads_tried=$((downloads_tried+1))
                 done
