@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/bin/sh
 
 # User Configuration
 email='name@example.com'
 password='nutella123'
 
-minimum_pdf_size=5000 # minimum file size to check if downloaded file is a valid pdf
+minimum_pdf_size=5000000 # minimum file size to check if downloaded file is a valid pdf
 wait_between_downloads=80 # wait a few seconds between repetitions on errors to prevent rate limiting
 max_tries_per_download=3 # if a download fails (or is not a valid pdf), repeat this often
 
@@ -77,71 +77,58 @@ for year in $(seq -f %g ${start_year} ${end_year}); do
         $verbose && printf "${info} ISSUE ${i}\n" 
         i_formatted=$(printf "%02d" ${i})
         file_base_path="${magazine}/${year}/${magazine}.${year}.${i_formatted}"
+        actual_pdf_size=0
+        downloads_tried=1
+        logp="[${magazine}][${year}/${i_formatted}]"
         if [ ! -f "${file_base_path}.pdf" ]; then
             # If file is not already downloaded start by downloading the thumbnail
             $verbose && printf "${log}${info} Downloading Thumbnail\n" 
             curl ${silent_param} -b ${curl_session_file} -f -k -L --retry 99 "https://heise.cloudimg.io/v7/_www-heise-de_/select/thumbnail/${magazine}/${year}/${i}.jpg" -o "${file_base_path}.jpg" --create-dirs
-            logp="[${magazine}][${year}/${i_formatted}]"
             if [ $? -eq 22 ]; then
                 # If the thumbnail could not be downloaded, the requested issue most likely does not exist
                 printf "${logp}[\033[0;33mSKIP\033[0m] Magazine issue does not exist on the server, skipping.\n"
             else
                 $verbose && printf "${log}${info} Thumbnail downloaded\n" 
-
-                articles=$(curl -# -b ${curl_session_file} -f -k -L --retry 99 "https://www.heise.de/select/${magazine}/archiv/${year}/${i}" | grep /select/${magazine}/archiv/${year}/${i}/seite-[0-9]*/pdf -o | cut -d- -f2 | cut -d/ -f1)
-                for a in $articles; do
-                    file_base_path_article="${magazine}/${year}/${i_formatted}/${magazine}.${year}.${i_formatted}.${a}"
-                    actual_pdf_size=0
-                    downloads_tried=1
-                    # Try downloading the requested issue until a PDF of minimum size is downloaded or until the maximum amount of tries has been reached
-                    until [ ${actual_pdf_size} -gt ${minimum_pdf_size} ] || [ ${downloads_tried} -gt ${max_tries_per_download} ]; do
-                        try="[TRY ${downloads_tried}/${max_tries_per_download}]"
-                        # Download the Header of the requested issue
-                        $verbose && printf "${log}${try}${info} Downloading Header\n"
-                        content_type=$(curl ${silent_param} -f -I -b ${curl_session_file} -k -L "https://www.heise.de/select/${magazine}/archiv/${year}/${i}/seite-${a}/pdf")
-                        response_code=$?
-                        content_type=$(echo "${content_type}" | grep -i "^Content-Type: " | cut -c15- | tr -d '\r')
-                        if [ ${response_code} -eq 22 ]; then
-                            # If the header could not be loaded, you most likely have no permission to request this file
-                            echo "${logp}${try} Server refused connection, you might not be allowed to download this issue."
+                # Try downloading the requested issue until a PDF of minimum size is downloaded or until the maximum amount of tries has been reached
+                until [ ${actual_pdf_size} -gt ${minimum_pdf_size} ] || [ ${downloads_tried} -gt ${max_tries_per_download} ]; do
+                    try="[TRY ${downloads_tried}/${max_tries_per_download}]"
+                    # Download the Header of the requested issue
+                    $verbose && printf "${log}${try}${info} Downloading Header\n"
+                    content_type=$(curl ${silent_param} -f -I -b ${curl_session_file} -k -L "https://www.heise.de/select/${magazine}/archiv/${year}/${i}/download")
+                    response_code=$?
+                    content_type=$(echo "${content_type}" | grep -i "^Content-Type: " | cut -c15- | tr -d '\r')
+                    if [ ${response_code} -eq 22 ]; then
+                        # If the header could not be loaded, you most likely have no permission to request this file
+                        echo "${logp}${try} Server refused connection, you might not be allowed to download this issue."
+                        sleepbar ${wait_between_downloads}
+                    elif [ "${content_type}" = 'binary/octet-stream' ]; then
+                        # If the header states this is a pdf file, download it
+                        echo "${logp} Downloading..."
+                        actual_pdf_size=$(curl -# -b ${curl_session_file} -f -k -L --retry 99 "https://www.heise.de/select/${magazine}/archiv/${year}/${i}/download" -o "${file_base_path}.pdf" --create-dirs -w '%{size_download}')
+                        # actual_pdf_size=$(wc -c < "${file_base_path}.pdf")
+                        if [ ${actual_pdf_size} -lt ${minimum_pdf_size} ]; then
+                            # If the file size of the downloaded pdf is not reasonably big (too small), we will retry.
+                            # This is to prevent the saving of error pages, but should already be avoided using the content type check.
+                            echo "${logp}${try} Downloaded file is too small (size: ${actual_pdf_size}/${minimum_pdf_size})."
                             sleepbar ${wait_between_downloads}
-                        elif [ "${content_type}" = 'binary/octet-stream' ] || [ "${content_type}" = 'application/pdf' ]; then
-                            # If the header states this is a pdf file, download it
-                            echo "${logp} Downloading..."
-                            actual_pdf_size=$(curl -# -b ${curl_session_file} -f -k -L --retry 99 "https://www.heise.de/select/${magazine}/archiv/${year}/${i}/seite-${a}/pdf" -o "${file_base_path_article}.pdf" --create-dirs -w '%{size_download}')
-                            # actual_pdf_size=$(wc -c < "${file_base_path_article}.pdf")
-                            if [ ${actual_pdf_size} -lt ${minimum_pdf_size} ]; then
-                                # If the file size of the downloaded pdf is not reasonably big (too small), we will retry.
-                                # This is to prevent the saving of error pages, but should already be avoided using the content type check.
-                                echo "${logp}${try} Downloaded file is too small (size: ${actual_pdf_size}/${minimum_pdf_size})."
-                                sleepbar ${wait_between_downloads}
-                            else
-                                printf "${logp}[\033[0;32mSUCCESS\033[0m] Downloaded ${file_base_path_article}.pdf (size: ${actual_pdf_size})\n"
-                            fi
                         else
-                            # If the header says it is not a pdf, we will try again.
-                            echo "${logp}${try} Server did not serve a valid pdf (instead ${content_type})."
-                            sleepbar ${wait_between_downloads}
+                            printf "${logp}[\033[0;32mSUCCESS\033[0m] Downloaded ${file_base_path}.pdf (size: ${actual_pdf_size})\n"
                         fi
-                        downloads_tried=$((downloads_tried+1))
-                    done
-                    if [ ! -f "${file_base_path_article}.pdf" ]; then
-                        # If for any of the above reasons the download was not succesfull, we log this to the console.
-                        printf "${logp}[\033[0;31mERROR\033[0m] Could not download magazine issue. Please try again later.\n"
-                        count_fail=$((count_fail+1))
                     else
-                        $verbose && printf "${log}${info} Finished Succesfully\n"
-                        count_success=$((count_success+1))
+                        # If the header says it is not a pdf, we will try again.
+                        echo "${logp}${try} Server did not serve a valid pdf (instead ${content_type})."
+                        sleepbar ${wait_between_downloads}
                     fi
+                    downloads_tried=$((downloads_tried+1))
                 done
-                files=(${articles})
-                if [ ${#files[@]} -gt 0 ]; then
-                    files=(${files[@]/#/${magazine}/${year}/${i_formatted}/${magazine}.${year}.${i_formatted}.})
-                    files=${files[@]/%/.pdf}
-                    gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile="${file_base_path}.pdf" ${files}
-                    rm ${files}
+                if [ ! -f "${file_base_path}.pdf" ]; then
+                    # If for any of the above reasons the download was not succesfull, we log this to the console.
+                    printf "${logp}[\033[0;31mERROR\033[0m] Could not download magazine issue. Please try again later.\n"
+                    count_fail=$((count_fail+1))
+                else
+                    $verbose && printf "${log}${info} Finished Succesfully\n"
+                    count_success=$((count_success+1))
                 fi
-                rmdir ${magazine}/${year}/${i_formatted} 2> /dev/null
             fi
         else
             printf "${logp}[\033[0;33mSKIP\033[0m] Already downloaded.\n"
