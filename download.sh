@@ -73,7 +73,7 @@ curl ${curlparams} -F "token=${token2}" "https://shop.heise.de/customer/account/
 # Download PDFs and Thumbnails
 for year in $(seq -f %g ${start_year} ${end_year}); do
     $verbose && printf "${info} YEAR ${year}\n" 
-    for i in $(seq -f %g 13 ${max_nr_of_magazines_per_year}); do
+    for i in $(seq -f %g 1 ${max_nr_of_magazines_per_year}); do
         $verbose && printf "${info} ISSUE ${i}\n" 
         i_formatted=$(printf "%02d" ${i})
         file_base_path_pdf="${magazine}/${year}/${magazine}.${year}.${i_formatted}"
