@@ -26,7 +26,7 @@ You will need an active subscription to download anything. This is just an alter
 - make sure to replace your email and password in the script
 
 ### I only get `Server refused connection, you might not be allowed to download this issue` errors
-Please check via your web browser if your subscription allows you to download full-page PDFs. Go to a page like this one https://www.heise.de/select/ct/archiv/2022/3 (replace `ct` with the magazine you want to download) and check if you have a "Download Issue as PDF" button. If you only see the green "Buy issue" and "Buy Subscription" buttons instead, you are not permitted to download full PDFs.
+Please check via your web browser if your subscription allows you to download full-page PDFs. Go to a page like this one https://www.heise.de/select/ct/archiv/2022/3 (replace `ct` with the magazine you want to download) and check if you have a "Download Issue as PDF" button. If you only see the green "Buy issue" and "Buy Subscription" buttons instead, you are not permitted to download full PDFs. Sometimes you will also only be able to download full PDFs for the last few months.
 
 Some Heise+ subscriptions only allow you to download single articles. In this case, you can use the second script `download_articles.sh` that will download and merge articles individually.
 
