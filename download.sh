@@ -1,10 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 
 # User Configuration
 email='name@example.com'
 password='nutella123'
 
-minimum_pdf_size=50000 # minimum file size to check if downloaded file is a valid pdf
+minimum_pdf_size=5000 # minimum file size to check if downloaded file is a valid pdf
 wait_between_downloads=80 # wait a few seconds between repetitions on errors to prevent rate limiting
 max_tries_per_download=3 # if a download fails (or is not a valid pdf), repeat this often
 
@@ -139,9 +139,9 @@ for year in $(seq -f %g ${start_year} ${end_year}); do
                     files=(${files[@]/#/${magazine}/${year}/${i_formatted}/${magazine}.${year}.${i_formatted}.})
                     files=${files[@]/%/.pdf}
                     gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile="${file_base_path}.pdf" ${files}
+                    rm ${files}
                 fi
-                rm ${files}
-                rmdir ${magazine}/${year}/${i_formatted}
+                rmdir ${magazine}/${year}/${i_formatted} 2> /dev/null
             fi
         else
             printf "${logp}[\033[0;33mSKIP\033[0m] Already downloaded.\n"
