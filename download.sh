@@ -63,12 +63,12 @@ sleepbar()
 # Login
 echo "Logging in..."
 curlparams="--no-progress-meter -b ${curl_session_file} -c ${curl_session_file} -k -L"
-$curl ${curlparams} "https://www.heise.de/sso/login" >/dev/null 2>&1
-$curl ${curlparams} -F 'forward=' -F "username=${email}" -F "password=${password}" -F 'ajax=1' "https://www.heise.de/sso/login/login" -o ${curl_session_file}.html
+curl ${curlparams} "https://www.heise.de/sso/login" >/dev/null 2>&1
+curl ${curlparams} -F 'forward=' -F "username=${email}" -F "password=${password}" -F 'ajax=1' "https://www.heise.de/sso/login/login" -o ${curl_session_file}.html
 token1=$(cat ${curl_session_file}.html | sed "s/token/\ntoken/g" | grep ^token | head -1 | cut -f 3 -d '"')
 token2=$(cat ${curl_session_file}.html | sed "s/token/\ntoken/g" | grep ^token | head -2 | tail -1 | cut -f 3 -d '"')
-$curl ${curlparams} -F "token=${token1}" "https://m.heise.de/sso/login/remote-login" >/dev/null 2>&1
-$curl ${curlparams} -F "token=${token2}" "https://shop.heise.de/customer/account/loginRemote" >/dev/null 2>&1
+curl ${curlparams} -F "token=${token1}" "https://m.heise.de/sso/login/remote-login" >/dev/null 2>&1
+curl ${curlparams} -F "token=${token2}" "https://shop.heise.de/customer/account/loginRemote" >/dev/null 2>&1
 
 # Download PDFs and Thumbnails
 for year in $(seq -f %g ${start_year} ${end_year}); do
@@ -80,7 +80,7 @@ for year in $(seq -f %g ${start_year} ${end_year}); do
         if [ ! -f "${file_base_path}.jpg" ]; then
             # If file is not already downloaded start by downloading the thumbnail
             $verbose && printf "${log}${info} Downloading Thumbnail\n" 
-            $curl ${silent_param} -b ${curl_session_file} -f -k -L --retry 99 "https://heise.cloudimg.io/v7/_www-heise-de_/select/thumbnail/${magazine}/${year}/${i}.jpg" -o "${file_base_path}.jpg" --create-dirs
+            curl ${silent_param} -b ${curl_session_file} -f -k -L --retry 99 "https://heise.cloudimg.io/v7/_www-heise-de_/select/thumbnail/${magazine}/${year}/${i}.jpg" -o "${file_base_path}.jpg" --create-dirs
             logp="[${magazine}][${year}/${i_formatted}]"
             if [ $? -eq 22 ]; then
                 # If the thumbnail could not be downloaded, the requested issue most likely does not exist
@@ -88,7 +88,7 @@ for year in $(seq -f %g ${start_year} ${end_year}); do
             else
                 $verbose && printf "${log}${info} Thumbnail downloaded\n" 
 
-                articles=$($curl -# -b ${curl_session_file} -f -k -L --retry 99 "https://www.heise.de/select/${magazine}/archiv/${year}/${i}" | grep /select/${magazine}/archiv/${year}/${i}/seite-[0-9]*/pdf -o | cut -d- -f2 | cut -d/ -f1)
+                articles=$(curl -# -b ${curl_session_file} -f -k -L --retry 99 "https://www.heise.de/select/${magazine}/archiv/${year}/${i}" | grep /select/${magazine}/archiv/${year}/${i}/seite-[0-9]*/pdf -o | cut -d- -f2 | cut -d/ -f1)
                 for a in $articles; do
                     file_base_path="${magazine}/${year}/${i_formatted}/${magazine}.${year}.${i_formatted}.${a}"
                     actual_pdf_size=0
@@ -98,7 +98,7 @@ for year in $(seq -f %g ${start_year} ${end_year}); do
                         try="[TRY ${downloads_tried}/${max_tries_per_download}]"
                         # Download the Header of the requested issue
                         $verbose && printf "${log}${try}${info} Downloading Header\n"
-                        content_type=$($curl ${silent_param} -f -I -b ${curl_session_file} -k -L "https://www.heise.de/select/${magazine}/archiv/${year}/${i}/seite-${a}/pdf")
+                        content_type=$(curl ${silent_param} -f -I -b ${curl_session_file} -k -L "https://www.heise.de/select/${magazine}/archiv/${year}/${i}/seite-${a}/pdf")
                         response_code=$?
                         content_type=$(echo "${content_type}" | grep -i "^Content-Type: " | cut -c15- | tr -d '\r')
                         if [ ${response_code} -eq 22 ]; then
@@ -108,7 +108,7 @@ for year in $(seq -f %g ${start_year} ${end_year}); do
                         elif [ "${content_type}" = 'binary/octet-stream' ] || [ "${content_type}" = 'application/pdf' ]; then
                             # If the header states this is a pdf file, download it
                             echo "${logp} Downloading..."
-                            actual_pdf_size=$($curl -# -b ${curl_session_file} -f -k -L --retry 99 "https://www.heise.de/select/${magazine}/archiv/${year}/${i}/seite-${a}/pdf" -o "${file_base_path}.pdf" --create-dirs -w '%{size_download}')
+                            actual_pdf_size=$(curl -# -b ${curl_session_file} -f -k -L --retry 99 "https://www.heise.de/select/${magazine}/archiv/${year}/${i}/seite-${a}/pdf" -o "${file_base_path}.pdf" --create-dirs -w '%{size_download}')
                             # actual_pdf_size=$(wc -c < "${file_base_path}.pdf")
                             if [ ${actual_pdf_size} -lt ${minimum_pdf_size} ]; then
                                 # If the file size of the downloaded pdf is not reasonably big (too small), we will retry.
