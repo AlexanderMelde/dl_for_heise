@@ -25,6 +25,18 @@ You will need an active subscription to download anything. This is just an alter
 - if you are not authorized to download a certain issue, the script will retry a few times and finally skip the file.
 - make sure to replace your email and password in the script
 
+## I only get "Server refused connection, you might not be allowed to download this issue" errors
+There seem to be different heise+ subscription models and some users cannot download the whole issue, but only single articles.
+If you see the error `erver refused connection, you might not be allowed to download this issue` you are certainly one of them and need to resort to the other download script that downloads and merges individually articles.
+
+For that install GhostScript (under Linux) and mark the download script executable:
+```
+sudo apt-get install gs
+chmod a+x download_articles.sh
+```
+
+Edit the script `download_articles.sh` and adapt email and password. The usage is exactly like `download.sh`.
+
 ## Example Output
 ```
 Heise Magazine Downloader v1.0
