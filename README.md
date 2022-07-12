@@ -25,17 +25,21 @@ You will need an active subscription to download anything. This is just an alter
 - if you are not authorized to download a certain issue, the script will retry a few times and finally skip the file.
 - make sure to replace your email and password in the script
 
-## I only get "Server refused connection, you might not be allowed to download this issue" errors
-There seem to be different heise+ subscription models and some users cannot download the whole issue, but only single articles.
-If you see the error `erver refused connection, you might not be allowed to download this issue` you are certainly one of them and need to resort to the other download script that downloads and merges individually articles.
+### I only get `Server refused connection, you might not be allowed to download this issue` errors
+Please check via your web browser if your subscription allows you to download full-page PDFs. Go to a page like this one https://www.heise.de/select/ct/archiv/2022/3 (replace `ct` with the magazine you want to download) and check if you have a "Download Issue as PDF" button. If you only see the green "Buy issue" and "Buy Subscription" buttons instead, you are not permitted to download full PDFs.
 
-For that install GhostScript (under Linux) and mark the download script executable:
+Some Heise+ subscriptions only allow you to download single articles. In this case, you can use the second script `download_articles.sh` that will download and merge articles individually.
+
+For merging the PDF files you will need to install GhostScript (under Linux) and mark the download script executable:
 ```
 sudo apt-get install gs
 chmod a+x download_articles.sh
 ```
 
 Edit the script `download_articles.sh` and adapt email and password. The usage is exactly like `download.sh`.
+
+### I get the errors `download.sh: line 2: $'\r': command not found` or `: not foundsh: 2:`
+Sometimes your text editor will convert your line endings to the windows format \r\n (CRLF) instead of \n (LF). Most editors will allow you to convert the line endings back to LF. You can also use the following command: `tr -d '\015' < download.sh > download_lf.sh` to create a new file with converted line endings.
 
 ## Example Output
 ```
